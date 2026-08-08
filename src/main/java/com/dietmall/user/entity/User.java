@@ -29,6 +29,11 @@ public class User {
         this.onboardingCompleted = false;
     }
 
+    // 온보딩 완료 처리
+    public void completeOnboarding() {
+        this.onboardingCompleted = true;
+    }
+
     public Long getId() {
         return id;
     }

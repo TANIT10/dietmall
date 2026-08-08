@@ -14,6 +14,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import com.dietmall.auth.exception.DuplicateEmailException;
 import com.dietmall.auth.exception.InvalidCredentialsException;
 import com.dietmall.auth.exception.InvalidRefreshTokenException;
+import com.dietmall.user.exception.OnboardingAlreadyCompletedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -58,6 +59,21 @@ public class GlobalExceptionHandler {
                 .body(
                         Map.of(
                                 "code", "INVALID_REFRESH_TOKEN",
+                                "message", e.getMessage()
+                        )
+                );
+    }
+
+    // 이미 온보딩을 완료한 사용자
+    @ExceptionHandler(OnboardingAlreadyCompletedException.class)
+    public ResponseEntity<Map<String, String>> handleOnboardingAlreadyCompleted(
+            OnboardingAlreadyCompletedException e) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        Map.of(
+                                "code", "ONBOARDING_ALREADY_COMPLETED",
                                 "message", e.getMessage()
                         )
                 );
