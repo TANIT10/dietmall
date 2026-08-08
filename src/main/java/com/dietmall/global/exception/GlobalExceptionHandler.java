@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.dietmall.auth.exception.DuplicateEmailException;
 import com.dietmall.auth.exception.InvalidCredentialsException;
@@ -121,6 +122,40 @@ public class GlobalExceptionHandler {
         return createValidationResponse(errors);
     }
 
+    // 잘못된 요청 값 처리
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
+            IllegalArgumentException e) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+
+        body.put("code", "BAD_REQUEST");
+        body.put("message", e.getMessage());
+
+        return ResponseEntity
+                .badRequest()
+                .body(body);
+    }
+
+    // Spring 자체 업로드 용량 제한 초과
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException e) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+
+        body.put("code", "BAD_REQUEST");
+        body.put(
+                "message",
+                "이미지 파일은 20MB 이하만 업로드할 수 있습니다."
+        );
+
+        return ResponseEntity
+                .badRequest()
+                .body(body);
+    }
+
+    // Validation 공통 응답
     private ResponseEntity<Map<String, Object>> createValidationResponse(
             Map<String, String> errors) {
 

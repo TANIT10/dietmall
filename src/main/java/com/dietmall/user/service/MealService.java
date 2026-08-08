@@ -6,8 +6,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.dietmall.user.dto.MealFoodRequest;
 import com.dietmall.user.dto.MealRecordRequest;
@@ -31,15 +33,18 @@ public class MealService {
     private final UserRepository userRepository;
     private final MealRecordRepository mealRecordRepository;
     private final MealFoodRepository mealFoodRepository;
+    private final MealImageStorageService mealImageStorageService;
 
     public MealService(
             UserRepository userRepository,
             MealRecordRepository mealRecordRepository,
-            MealFoodRepository mealFoodRepository) {
+            MealFoodRepository mealFoodRepository,
+            MealImageStorageService mealImageStorageService) {
 
         this.userRepository = userRepository;
         this.mealRecordRepository = mealRecordRepository;
         this.mealFoodRepository = mealFoodRepository;
+        this.mealImageStorageService = mealImageStorageService;
     }
 
     // 식단 기록 추가
@@ -81,7 +86,6 @@ public class MealService {
             CalorieSource calorieSource;
             FoodAnalysisStatus analysisStatus;
 
-            // 사용자가 칼로리를 알고 직접 입력한 경우
             if (calories != null) {
 
                 calorieSource =
@@ -92,8 +96,6 @@ public class MealService {
 
             } else {
 
-                // 칼로리를 모르는 경우
-                // 나중에 AI 분석 대상
                 calorieSource =
                         CalorieSource.NONE;
 
@@ -125,6 +127,71 @@ public class MealService {
                 savedMealRecord,
                 savedMealFoods
         );
+    }
+
+    // 식단 사진 업로드
+    @Transactional
+    public MealRecordResponse uploadMealImage(
+            Long userId,
+            Long mealId,
+            MultipartFile file) {
+
+        MealRecord mealRecord =
+                mealRecordRepository
+                        .findByIdAndUserId(
+                                mealId,
+                                userId
+                        )
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "식단 기록을 찾을 수 없습니다."
+                                )
+                        );
+
+        String imageUrl =
+                mealImageStorageService
+                        .saveImage(file);
+
+        mealRecord.updateImageUrl(
+                imageUrl
+        );
+
+        List<MealFood> mealFoods =
+                mealFoodRepository
+                        .findAllByMealRecordIdOrderByIdAsc(
+                                mealRecord.getId()
+                        );
+
+        return MealRecordResponse.from(
+                mealRecord,
+                mealFoods
+        );
+    }
+
+    // 식단 사진 조회
+    @Transactional(readOnly = true)
+    public Resource getMealImage(
+            Long userId,
+            Long mealId) {
+
+        // 로그인한 사용자의 식단인지 먼저 확인
+        MealRecord mealRecord =
+                mealRecordRepository
+                        .findByIdAndUserId(
+                                mealId,
+                                userId
+                        )
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "식단 기록을 찾을 수 없습니다."
+                                )
+                        );
+
+        // 그 식단에 연결된 실제 사진 파일 불러오기
+        return mealImageStorageService
+                .loadImage(
+                        mealRecord.getImageUrl()
+                );
     }
 
     // 내 식단 전체 조회
@@ -254,7 +321,7 @@ public class MealService {
         );
     }
 
-    // 특정 날짜의 MealRecord 목록 가져오기
+    // 특정 날짜 식단 기록 가져오기
     private List<MealRecord> getMealRecordsByDate(
             Long userId,
             LocalDate date) {
@@ -277,7 +344,7 @@ public class MealService {
                 );
     }
 
-    // MealRecord 목록을 앱 응답 형태로 변환
+    // MealRecord 목록을 응답 형태로 변환
     private List<MealRecordResponse> convertToResponses(
             List<MealRecord> mealRecords) {
 
