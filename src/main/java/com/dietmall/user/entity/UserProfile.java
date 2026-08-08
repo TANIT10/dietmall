@@ -82,6 +82,19 @@ public class UserProfile {
         this.mealPreference = mealPreference;
     }
 
+    // 프로필 수정
+    public void updateProfile(
+            ExerciseLevel exerciseLevel,
+            DietDifficulty dietDifficulty,
+            AlcoholFrequency alcoholFrequency,
+            MealPreference mealPreference) {
+
+        this.exerciseLevel = exerciseLevel;
+        this.dietDifficulty = dietDifficulty;
+        this.alcoholFrequency = alcoholFrequency;
+        this.mealPreference = mealPreference;
+    }
+
     public Long getId() {
         return id;
     }
