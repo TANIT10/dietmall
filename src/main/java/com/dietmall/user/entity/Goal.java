@@ -49,6 +49,13 @@ public class Goal {
         this.targetWeight = targetWeight;
     }
 
+    // 목표 체중 수정
+    public void updateTargetWeight(
+            BigDecimal targetWeight) {
+
+        this.targetWeight = targetWeight;
+    }
+
     public Long getId() {
         return id;
     }
