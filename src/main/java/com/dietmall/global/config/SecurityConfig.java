@@ -26,12 +26,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         // 인증 없이 사용할 수 있는 인증 API
-                		.requestMatchers(
-                		        "/api/auth/signup",
-                		        "/api/auth/login",
-                		        "/api/auth/refresh",
-                		        "/api/auth/logout"
-                		).permitAll()
+                        .requestMatchers(
+                                "/api/auth/signup",
+                                "/api/auth/login",
+                                "/api/auth/refresh",
+                                "/api/auth/logout",
+                                "/api/auth/kakao/login",
+                                "/login/oauth2/code/kakao"
+                        ).permitAll()
 
                         // 서버 상태 확인
                         .requestMatchers(
