@@ -32,7 +32,13 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
                                 "/api/auth/kakao/login",
+                                "/api/auth/google/login",
                                 "/login/oauth2/code/kakao"
+                        ).permitAll()
+
+                        // 구글 로그인 개발용 테스트 페이지
+                        .requestMatchers(
+                                "/google-test.html"
                         ).permitAll()
 
                         // 서버 상태 확인
