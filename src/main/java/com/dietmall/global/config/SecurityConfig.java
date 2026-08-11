@@ -36,14 +36,21 @@ public class SecurityConfig {
                                 "/login/oauth2/code/kakao"
                         ).permitAll()
 
-                        // 구글 로그인 개발용 테스트 페이지
+                        // 개발용 테스트 페이지
                         .requestMatchers(
-                                "/google-test.html"
+                                "/google-test.html",
+                                "/websocket-test.html"
                         ).permitAll()
 
                         // 서버 상태 확인
                         .requestMatchers(
                                 "/api/health"
+                        ).permitAll()
+
+                        // WebSocket 연결 입구
+                        .requestMatchers(
+                                "/ws",
+                                "/ws/**"
                         ).permitAll()
 
                         // Swagger

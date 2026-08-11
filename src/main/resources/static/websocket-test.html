@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DietMall WebSocket Test</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.2.0/bundles/stomp.umd.min.js"></script>
+</head>
+
+<body>
+
+<h2>DietMall 실시간 채팅 테스트</h2>
+
+
+<h3>1. 연결 정보</h3>
+
+<div>
+    <label>Access Token</label>
+    <br>
+
+    <textarea
+            id="token"
+            rows="5"
+            cols="100"
+            placeholder="Swagger 로그인 후 accessToken만 붙여넣기"></textarea>
+</div>
+
+<br>
+
+<div>
+    <label>Group ID</label>
+    <br>
+
+    <input
+            id="groupId"
+            type="number"
+            value="2">
+</div>
+
+<br>
+
+<button onclick="connectWebSocket()">
+    WebSocket 연결
+</button>
+
+<button onclick="disconnectWebSocket()">
+    연결 종료
+</button>
+
+
+<hr>
+
+
+<h3>2. 메시지 보내기</h3>
+
+<input
+        id="message"
+        type="text"
+        size="60"
+        placeholder="보낼 메시지">
+
+<button onclick="sendMessage()">
+    메시지 전송
+</button>
+
+
+<hr>
+
+
+<h3>3. 로그</h3>
+
+<pre id="log"></pre>
+
+
+<script>
+
+    let client = null;
+
+
+    function addLog(message) {
+
+        const log =
+                document.getElementById(
+                        "log"
+                );
+
+        log.textContent +=
+                message + "\n";
+    }
+
+
+    function connectWebSocket() {
+
+        const token =
+                document.getElementById(
+                        "token"
+                ).value.trim();
+
+
+        const groupId =
+                document.getElementById(
+                        "groupId"
+                ).value;
+
+
+        if (!token) {
+
+            addLog(
+                    "❌ accessToken을 입력해주세요."
+            );
+
+            return;
+        }
+
+
+        if (!groupId) {
+
+            addLog(
+                    "❌ groupId를 입력해주세요."
+            );
+
+            return;
+        }
+
+
+        if (typeof StompJs === "undefined") {
+
+            addLog(
+                    "❌ STOMP 라이브러리가 로딩되지 않았습니다."
+            );
+
+            return;
+        }
+
+
+        client =
+                new StompJs.Client({
+
+                    brokerURL:
+                            "ws://localhost:8080/ws",
+
+                    connectHeaders: {
+
+                        Authorization:
+                                "Bearer " + token
+                    },
+
+                    reconnectDelay: 0,
+
+                    debug: function(message) {
+
+                        console.log(
+                                "[STOMP]",
+                                message
+                        );
+                    }
+                });
+
+
+        client.onConnect =
+                function() {
+
+                    addLog(
+                            "✅ WebSocket 연결 성공"
+                    );
+
+
+                    client.subscribe(
+
+                            "/topic/groups/"
+                            + groupId
+                            + "/chat",
+
+                            function(message) {
+
+                                const data =
+                                        JSON.parse(
+                                                message.body
+                                        );
+
+
+                                addLog(
+                                        "📩 "
+                                        + data.authorNickname
+                                        + " : "
+                                        + data.content
+                                );
+                            }
+                    );
+
+
+                    addLog(
+                            "✅ 그룹 "
+                            + groupId
+                            + " 채팅 구독 요청 완료"
+                    );
+
+
+                    client.subscribe(
+
+                            "/user/queue/errors",
+
+                            function(message) {
+
+                                const data =
+                                        JSON.parse(
+                                                message.body
+                                        );
+
+
+                                addLog(
+                                        "❌ 오류 코드 : "
+                                        + data.code
+                                );
+
+
+                                addLog(
+                                        "❌ 오류 내용 : "
+                                        + data.message
+                                );
+                            }
+                    );
+
+
+                    addLog(
+                            "✅ WebSocket 오류 채널 구독 완료"
+                    );
+                };
+
+
+        client.onStompError =
+                function(frame) {
+
+                    addLog(
+                            "❌ STOMP 연결 오류"
+                    );
+
+                    console.error(
+                            frame
+                    );
+                };
+
+
+        client.onWebSocketError =
+                function(event) {
+
+                    addLog(
+                            "❌ WebSocket 오류"
+                    );
+
+                    console.error(
+                            event
+                    );
+                };
+
+
+        client.onWebSocketClose =
+                function() {
+
+                    addLog(
+                            "⚠️ WebSocket 연결 종료"
+                    );
+                };
+
+
+        client.activate();
+    }
+
+
+    function sendMessage() {
+
+        if (client == null
+                || !client.connected) {
+
+            addLog(
+                    "❌ 먼저 WebSocket을 연결해주세요."
+            );
+
+            return;
+        }
+
+
+        const groupId =
+                document.getElementById(
+                        "groupId"
+                ).value;
+
+
+        const content =
+                document.getElementById(
+                        "message"
+                ).value.trim();
+
+
+        if (!content) {
+
+            addLog(
+                    "❌ 메시지를 입력해주세요."
+            );
+
+            return;
+        }
+
+
+        client.publish({
+
+            destination:
+                    "/app/groups/"
+                    + groupId
+                    + "/chat",
+
+            body:
+                    JSON.stringify({
+
+                        content: content
+                    })
+        });
+
+
+        addLog(
+                "📤 전송 : " + content
+        );
+
+
+        document.getElementById(
+                "message"
+        ).value = "";
+    }
+
+
+    function disconnectWebSocket() {
+
+        if (client != null) {
+
+            client.deactivate();
+
+            client = null;
+        }
+    }
+
+</script>
+
+</body>
+</html>
