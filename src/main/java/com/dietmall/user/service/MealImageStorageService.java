@@ -19,8 +19,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class MealImageStorageService {
 
-	private static final long MAX_FILE_SIZE =
-	        20 * 1024 * 1024;
+    private static final long MAX_FILE_SIZE =
+            20L * 1024L * 1024L;
 
     private static final Set<String> ALLOWED_EXTENSIONS =
             Set.of(
@@ -30,6 +30,26 @@ public class MealImageStorageService {
                     ".webp",
                     ".heic",
                     ".heif"
+            );
+
+    private static final Set<String> ALLOWED_CONTENT_TYPES =
+            Set.of(
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/heic",
+                    "image/heif"
+            );
+
+    private static final Set<String> ALLOWED_HEIF_BRANDS =
+            Set.of(
+                    "heic",
+                    "heix",
+                    "hevc",
+                    "hevx",
+                    "heif",
+                    "mif1",
+                    "msf1"
             );
 
     private final Path mealUploadPath;
@@ -62,7 +82,9 @@ public class MealImageStorageService {
     public String saveImage(
             MultipartFile file) {
 
-        validateImage(file);
+        validateImage(
+                file
+        );
 
         String originalFilename =
                 file.getOriginalFilename();
@@ -74,7 +96,6 @@ public class MealImageStorageService {
 
         String storedFilename =
                 UUID.randomUUID()
-                        .toString()
                         + extension;
 
         Path destination =
@@ -82,8 +103,7 @@ public class MealImageStorageService {
                         .resolve(storedFilename)
                         .normalize();
 
-        if (!destination.getParent()
-                .equals(mealUploadPath)) {
+        if (!destination.startsWith(mealUploadPath)) {
 
             throw new IllegalArgumentException(
                     "잘못된 파일 경로입니다."
@@ -91,7 +111,7 @@ public class MealImageStorageService {
         }
 
         try (InputStream inputStream =
-                file.getInputStream()) {
+                     file.getInputStream()) {
 
             Files.copy(
                     inputStream,
@@ -124,8 +144,8 @@ public class MealImageStorageService {
         }
 
         String filename =
-                imageUrl.substring(
-                        imageUrl.lastIndexOf('/') + 1
+                extractFilenameFromImageUrl(
+                        imageUrl
                 );
 
         Path imagePath =
@@ -133,8 +153,7 @@ public class MealImageStorageService {
                         .resolve(filename)
                         .normalize();
 
-        if (!imagePath.getParent()
-                .equals(mealUploadPath)) {
+        if (!imagePath.startsWith(mealUploadPath)) {
 
             throw new IllegalArgumentException(
                     "잘못된 이미지 경로입니다."
@@ -186,17 +205,6 @@ public class MealImageStorageService {
             );
         }
 
-        String contentType =
-                file.getContentType();
-
-        if (contentType == null
-                || !contentType.startsWith("image/")) {
-
-            throw new IllegalArgumentException(
-                    "이미지 파일만 업로드할 수 있습니다."
-            );
-        }
-
         String extension =
                 getExtension(
                         file.getOriginalFilename()
@@ -209,6 +217,167 @@ public class MealImageStorageService {
                     "jpg, jpeg, png, webp, heic, heif 파일만 업로드할 수 있습니다."
             );
         }
+
+        String contentType =
+                file.getContentType();
+
+        if (contentType == null
+                || !ALLOWED_CONTENT_TYPES.contains(
+                        contentType.toLowerCase()
+                )) {
+
+            throw new IllegalArgumentException(
+                    "올바른 이미지 파일 형식이 아닙니다."
+            );
+        }
+
+        validateImageSignature(
+                file,
+                extension
+        );
+    }
+
+    private void validateImageSignature(
+            MultipartFile file,
+            String extension) {
+
+        byte[] header =
+                new byte[16];
+
+        try (InputStream inputStream =
+                     file.getInputStream()) {
+
+            int read =
+                    inputStream.read(header);
+
+            if (read < 12) {
+
+                throw new IllegalArgumentException(
+                        "올바른 이미지 파일이 아닙니다."
+                );
+            }
+
+        } catch (IOException e) {
+
+            throw new IllegalStateException(
+                    "이미지 파일을 확인하는 중 오류가 발생했습니다.",
+                    e
+            );
+        }
+
+        boolean valid;
+
+        if (extension.equals(".jpg")
+                || extension.equals(".jpeg")) {
+
+            valid =
+                    isJpeg(header);
+
+        } else if (extension.equals(".png")) {
+
+            valid =
+                    isPng(header);
+
+        } else if (extension.equals(".webp")) {
+
+            valid =
+                    isWebp(header);
+
+        } else if (extension.equals(".heic")
+                || extension.equals(".heif")) {
+
+            valid =
+                    isHeif(header);
+
+        } else {
+
+            valid = false;
+        }
+
+        if (!valid) {
+
+            throw new IllegalArgumentException(
+                    "파일 확장자와 실제 이미지 형식이 일치하지 않습니다."
+            );
+        }
+    }
+
+    private boolean isJpeg(
+            byte[] header) {
+
+        return (header[0] & 0xFF) == 0xFF
+                && (header[1] & 0xFF) == 0xD8
+                && (header[2] & 0xFF) == 0xFF;
+    }
+
+    private boolean isPng(
+            byte[] header) {
+
+        return (header[0] & 0xFF) == 0x89
+                && header[1] == 0x50
+                && header[2] == 0x4E
+                && header[3] == 0x47
+                && header[4] == 0x0D
+                && header[5] == 0x0A
+                && header[6] == 0x1A
+                && header[7] == 0x0A;
+    }
+
+    private boolean isWebp(
+            byte[] header) {
+
+        return header[0] == 'R'
+                && header[1] == 'I'
+                && header[2] == 'F'
+                && header[3] == 'F'
+                && header[8] == 'W'
+                && header[9] == 'E'
+                && header[10] == 'B'
+                && header[11] == 'P';
+    }
+
+    private boolean isHeif(
+            byte[] header) {
+
+        boolean hasFtyp =
+                header[4] == 'f'
+                        && header[5] == 't'
+                        && header[6] == 'y'
+                        && header[7] == 'p';
+
+        if (!hasFtyp) {
+            return false;
+        }
+
+        String brand =
+                new String(
+                        header,
+                        8,
+                        4
+                ).toLowerCase();
+
+        return ALLOWED_HEIF_BRANDS.contains(
+                brand
+        );
+    }
+
+    private String extractFilenameFromImageUrl(
+            String imageUrl) {
+
+        int slashIndex =
+                imageUrl.lastIndexOf('/');
+
+        if (slashIndex < 0
+                || slashIndex == imageUrl.length() - 1) {
+
+            throw new IllegalArgumentException(
+                    "잘못된 이미지 경로입니다."
+            );
+        }
+
+        return imageUrl.substring(
+                slashIndex + 1
+        );
     }
 
     // 원래 파일 이름에서 확장자 가져오기
@@ -218,7 +387,9 @@ public class MealImageStorageService {
         if (filename == null
                 || filename.isBlank()) {
 
-            return "";
+            throw new IllegalArgumentException(
+                    "파일 이름을 확인할 수 없습니다."
+            );
         }
 
         int dotIndex =
@@ -227,7 +398,9 @@ public class MealImageStorageService {
         if (dotIndex < 0
                 || dotIndex == filename.length() - 1) {
 
-            return "";
+            throw new IllegalArgumentException(
+                    "파일 확장자를 확인할 수 없습니다."
+            );
         }
 
         return filename

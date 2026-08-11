@@ -2,8 +2,12 @@ package com.dietmall.group.service;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.dietmall.group.dto.DietLogCreateRequest;
@@ -19,6 +23,12 @@ import com.dietmall.group.repository.GroupMemberRepository;
 @Service
 public class DietLogService {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    DietLogService.class
+            );
+
+
     private final DietLogRepository dietLogRepository;
     private final DietGroupRepository dietGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
@@ -31,10 +41,17 @@ public class DietLogService {
             GroupMemberRepository groupMemberRepository,
             DietLogImageService dietLogImageService) {
 
-        this.dietLogRepository = dietLogRepository;
-        this.dietGroupRepository = dietGroupRepository;
-        this.groupMemberRepository = groupMemberRepository;
-        this.dietLogImageService = dietLogImageService;
+        this.dietLogRepository =
+                dietLogRepository;
+
+        this.dietGroupRepository =
+                dietGroupRepository;
+
+        this.groupMemberRepository =
+                groupMemberRepository;
+
+        this.dietLogImageService =
+                dietLogImageService;
     }
 
 
@@ -46,7 +63,9 @@ public class DietLogService {
             MultipartFile file) {
 
         DietGroup group =
-                getGroup(groupId);
+                getGroup(
+                        groupId
+                );
 
 
         GroupMember member =
@@ -62,7 +81,12 @@ public class DietLogService {
                 );
 
 
-        DietLog log =
+        deleteFileIfTransactionRollsBack(
+                savedFileName
+        );
+
+
+        DietLog logEntity =
                 new DietLog(
                         group,
                         member,
@@ -75,7 +99,7 @@ public class DietLogService {
 
         DietLog savedLog =
                 dietLogRepository.save(
-                        log
+                        logEntity
                 );
 
 
@@ -101,7 +125,9 @@ public class DietLogService {
                         groupId
                 )
                 .stream()
-                .map(this::toResponse)
+                .map(
+                        this::toResponse
+                )
                 .toList();
     }
 
@@ -118,7 +144,7 @@ public class DietLogService {
         );
 
 
-        DietLog log =
+        DietLog logEntity =
                 getDietLog(
                         groupId,
                         logId
@@ -126,7 +152,7 @@ public class DietLogService {
 
 
         return toResponse(
-                log
+                logEntity
         );
     }
 
@@ -145,7 +171,7 @@ public class DietLogService {
                 );
 
 
-        DietLog log =
+        DietLog logEntity =
                 getDietLog(
                         groupId,
                         logId
@@ -154,11 +180,11 @@ public class DietLogService {
 
         validateLogOwner(
                 member,
-                log
+                logEntity
         );
 
 
-        log.updateMemo(
+        logEntity.updateMemo(
                 normalizeMemo(
                         request.getMemo()
                 )
@@ -166,7 +192,7 @@ public class DietLogService {
 
 
         return toResponse(
-                log
+                logEntity
         );
     }
 
@@ -185,7 +211,7 @@ public class DietLogService {
                 );
 
 
-        DietLog log =
+        DietLog logEntity =
                 getDietLog(
                         groupId,
                         logId
@@ -194,12 +220,12 @@ public class DietLogService {
 
         validateLogOwner(
                 member,
-                log
+                logEntity
         );
 
 
         String oldFileName =
-                log.getImageUrl();
+                logEntity.getImageUrl();
 
 
         String newFileName =
@@ -208,18 +234,23 @@ public class DietLogService {
                 );
 
 
-        log.updateImage(
+        deleteFileIfTransactionRollsBack(
                 newFileName
         );
 
 
-        dietLogImageService.delete(
+        logEntity.updateImage(
+                newFileName
+        );
+
+
+        deleteFileAfterTransactionCommit(
                 oldFileName
         );
 
 
         return toResponse(
-                log
+                logEntity
         );
     }
 
@@ -237,7 +268,7 @@ public class DietLogService {
                 );
 
 
-        DietLog log =
+        DietLog logEntity =
                 getDietLog(
                         groupId,
                         logId
@@ -246,20 +277,20 @@ public class DietLogService {
 
         validateLogOwner(
                 member,
-                log
+                logEntity
         );
 
 
         String fileName =
-                log.getImageUrl();
+                logEntity.getImageUrl();
 
 
         dietLogRepository.delete(
-                log
+                logEntity
         );
 
 
-        dietLogImageService.delete(
+        deleteFileAfterTransactionCommit(
                 fileName
         );
     }
@@ -269,7 +300,9 @@ public class DietLogService {
             Long groupId) {
 
         return dietGroupRepository
-                .findById(groupId)
+                .findById(
+                        groupId
+                )
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "그룹을 찾을 수 없습니다."
@@ -314,11 +347,14 @@ public class DietLogService {
 
     private void validateLogOwner(
             GroupMember member,
-            DietLog log) {
+            DietLog logEntity) {
 
-        if (!log.getAuthor()
+        if (!logEntity
+                .getAuthor()
                 .getId()
-                .equals(member.getId())) {
+                .equals(
+                        member.getId()
+                )) {
 
             throw new IllegalArgumentException(
                     "본인이 작성한 로그만 수정하거나 삭제할 수 있습니다."
@@ -348,23 +384,122 @@ public class DietLogService {
     }
 
 
+    private void deleteFileAfterTransactionCommit(
+            String fileName) {
+
+        if (fileName == null
+                || fileName.isBlank()) {
+
+            return;
+        }
+
+
+        if (!TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+
+            safelyDeleteFile(
+                    fileName
+            );
+
+            return;
+        }
+
+
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCommit() {
+
+                                safelyDeleteFile(
+                                        fileName
+                                );
+                            }
+                        }
+                );
+    }
+
+
+    private void deleteFileIfTransactionRollsBack(
+            String fileName) {
+
+        if (fileName == null
+                || fileName.isBlank()) {
+
+            return;
+        }
+
+
+        if (!TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+
+            return;
+        }
+
+
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCompletion(
+                                    int status) {
+
+                                if (status
+                                        == TransactionSynchronization.STATUS_ROLLED_BACK) {
+
+                                    safelyDeleteFile(
+                                            fileName
+                                    );
+                                }
+                            }
+                        }
+                );
+    }
+
+
+    private void safelyDeleteFile(
+            String fileName) {
+
+        try {
+
+            dietLogImageService.delete(
+                    fileName
+            );
+
+        } catch (RuntimeException e) {
+
+            log.warn(
+                    "다이어트 로그 이미지 파일 정리에 실패했습니다. fileName={}",
+                    fileName,
+                    e
+            );
+        }
+    }
+
+
     private DietLogResponse toResponse(
-            DietLog log) {
+            DietLog logEntity) {
 
         GroupMember author =
-                log.getAuthor();
+                logEntity.getAuthor();
 
 
         return new DietLogResponse(
-                log.getId(),
-                log.getGroup().getId(),
+                logEntity.getId(),
+                logEntity.getGroup().getId(),
                 author.getId(),
                 author.getGroupNickname(),
-                buildProfileImageUrl(author),
-                buildLogImageUrl(log),
-                log.getMemo(),
-                log.getCreatedAt(),
-                log.getUpdatedAt()
+                buildProfileImageUrl(
+                        author
+                ),
+                buildLogImageUrl(
+                        logEntity
+                ),
+                logEntity.getMemo(),
+                logEntity.getCreatedAt(),
+                logEntity.getUpdatedAt()
         );
     }
 
@@ -388,12 +523,12 @@ public class DietLogService {
 
 
     private String buildLogImageUrl(
-            DietLog log) {
+            DietLog logEntity) {
 
         return "/api/groups/"
-                + log.getGroup().getId()
+                + logEntity.getGroup().getId()
                 + "/logs/"
-                + log.getId()
+                + logEntity.getId()
                 + "/image";
     }
 }

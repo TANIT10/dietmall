@@ -9,11 +9,9 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
-public class WebSocketConfig
-        implements WebSocketMessageBrokerConfigurer {
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
-
 
     public WebSocketConfig(
             WebSocketAuthInterceptor webSocketAuthInterceptor) {
@@ -47,11 +45,12 @@ public class WebSocketConfig
             StompEndpointRegistry registry) {
 
         registry.addEndpoint(
-                "/ws"
-        )
-        .setAllowedOriginPatterns(
-                "*"
-        );
+                        "/ws"
+                )
+                .setAllowedOrigins(
+                        "http://localhost:8080",
+                        "http://127.0.0.1:8080"
+                );
     }
 
 

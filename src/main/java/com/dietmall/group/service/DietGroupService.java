@@ -3,8 +3,12 @@ package com.dietmall.group.service;
 import java.security.SecureRandom;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.dietmall.group.dto.GroupCreateRequest;
@@ -24,6 +28,12 @@ import com.dietmall.user.repository.UserRepository;
 
 @Service
 public class DietGroupService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    DietGroupService.class
+            );
+
 
     private static final String INVITE_CODE_CHARACTERS =
             "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -67,7 +77,9 @@ public class DietGroupService {
             GroupCreateRequest request) {
 
         User user =
-                getUser(userId);
+                getUser(
+                        userId
+                );
 
 
         String groupNickname =
@@ -93,7 +105,9 @@ public class DietGroupService {
 
 
         DietGroup savedGroup =
-                dietGroupRepository.save(group);
+                dietGroupRepository.save(
+                        group
+                );
 
 
         GroupMember ownerMember =
@@ -105,10 +119,14 @@ public class DietGroupService {
                 );
 
 
-        groupMemberRepository.save(ownerMember);
+        groupMemberRepository.save(
+                ownerMember
+        );
 
 
-        return toResponse(savedGroup);
+        return toResponse(
+                savedGroup
+        );
     }
 
 
@@ -119,12 +137,16 @@ public class DietGroupService {
             GroupJoinRequest request) {
 
         User user =
-                getUser(userId);
+                getUser(
+                        userId
+                );
 
 
         DietGroup group =
                 dietGroupRepository
-                        .findById(groupId)
+                        .findById(
+                                groupId
+                        )
                         .orElseThrow(() ->
                                 new IllegalArgumentException(
                                         "그룹을 찾을 수 없습니다."
@@ -148,7 +170,9 @@ public class DietGroupService {
         );
 
 
-        return toResponse(group);
+        return toResponse(
+                group
+        );
     }
 
 
@@ -159,7 +183,9 @@ public class DietGroupService {
             GroupJoinRequest request) {
 
         User user =
-                getUser(userId);
+                getUser(
+                        userId
+                );
 
 
         String normalizedInviteCode =
@@ -196,7 +222,9 @@ public class DietGroupService {
         );
 
 
-        return toResponse(group);
+        return toResponse(
+                group
+        );
     }
 
 
@@ -243,7 +271,9 @@ public class DietGroupService {
                             group.getDescription(),
                             group.getVisibility(),
                             member.getGroupNickname(),
-                            buildProfileImageUrl(member)
+                            buildProfileImageUrl(
+                                    member
+                            )
                     );
                 })
                 .toList();
@@ -262,7 +292,9 @@ public class DietGroupService {
                 );
 
 
-        return toProfileResponse(member);
+        return toProfileResponse(
+                member
+        );
     }
 
 
@@ -291,13 +323,17 @@ public class DietGroupService {
                                 groupId,
                                 newNickname
                         )
-                        .orElse(null);
+                        .orElse(
+                                null
+                        );
 
 
         if (nicknameOwner != null
                 && !nicknameOwner
                         .getId()
-                        .equals(member.getId())) {
+                        .equals(
+                                member.getId()
+                        )) {
 
             throw new IllegalArgumentException(
                     "이미 사용 중인 그룹 닉네임입니다."
@@ -310,7 +346,9 @@ public class DietGroupService {
         );
 
 
-        return toProfileResponse(member);
+        return toProfileResponse(
+                member
+        );
     }
 
 
@@ -337,25 +375,28 @@ public class DietGroupService {
                 );
 
 
+        deleteFileIfTransactionRollsBack(
+                newFileName
+        );
+
+
         member.updateProfileImage(
                 newFileName
         );
 
 
-        if (oldFileName != null
-                && !oldFileName.isBlank()) {
-
-            groupProfileImageService.delete(
-                    oldFileName
-            );
-        }
+        deleteFileAfterTransactionCommit(
+                oldFileName
+        );
 
 
         return new GroupProfileImageResponse(
                 member.getId(),
                 groupId,
                 member.getGroupNickname(),
-                buildProfileImageUrl(member)
+                buildProfileImageUrl(
+                        member
+                )
         );
     }
 
@@ -379,13 +420,9 @@ public class DietGroupService {
         member.removeProfileImage();
 
 
-        if (oldFileName != null
-                && !oldFileName.isBlank()) {
-
-            groupProfileImageService.delete(
-                    oldFileName
-            );
-        }
+        deleteFileAfterTransactionCommit(
+                oldFileName
+        );
 
 
         return new GroupProfileImageResponse(
@@ -448,7 +485,9 @@ public class DietGroupService {
                 );
 
 
-        groupMemberRepository.save(member);
+        groupMemberRepository.save(
+                member
+        );
     }
 
 
@@ -473,7 +512,9 @@ public class DietGroupService {
             Long userId) {
 
         return userRepository
-                .findById(userId)
+                .findById(
+                        userId
+                )
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "사용자를 찾을 수 없습니다."
@@ -542,7 +583,9 @@ public class DietGroupService {
 
             builder.append(
                     INVITE_CODE_CHARACTERS
-                            .charAt(index)
+                            .charAt(
+                                    index
+                            )
             );
         }
 
@@ -571,6 +614,101 @@ public class DietGroupService {
 
 
         return trimmed;
+    }
+
+
+    private void deleteFileAfterTransactionCommit(
+            String fileName) {
+
+        if (fileName == null
+                || fileName.isBlank()) {
+
+            return;
+        }
+
+
+        if (!TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+
+            safelyDeleteProfileImage(
+                    fileName
+            );
+
+            return;
+        }
+
+
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCommit() {
+
+                                safelyDeleteProfileImage(
+                                        fileName
+                                );
+                            }
+                        }
+                );
+    }
+
+
+    private void deleteFileIfTransactionRollsBack(
+            String fileName) {
+
+        if (fileName == null
+                || fileName.isBlank()) {
+
+            return;
+        }
+
+
+        if (!TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+
+            return;
+        }
+
+
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCompletion(
+                                    int status) {
+
+                                if (status
+                                        == TransactionSynchronization.STATUS_ROLLED_BACK) {
+
+                                    safelyDeleteProfileImage(
+                                            fileName
+                                    );
+                                }
+                            }
+                        }
+                );
+    }
+
+
+    private void safelyDeleteProfileImage(
+            String fileName) {
+
+        try {
+
+            groupProfileImageService.delete(
+                    fileName
+            );
+
+        } catch (RuntimeException e) {
+
+            log.warn(
+                    "그룹 프로필 이미지 파일 정리에 실패했습니다. fileName={}",
+                    fileName,
+                    e
+            );
+        }
     }
 
 
@@ -615,7 +753,9 @@ public class DietGroupService {
                 member.getId(),
                 member.getGroup().getId(),
                 member.getGroupNickname(),
-                buildProfileImageUrl(member)
+                buildProfileImageUrl(
+                        member
+                )
         );
     }
 }
