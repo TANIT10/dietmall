@@ -49,6 +49,13 @@
         <artifactId>mysql-connector-j</artifactId>
         <scope>runtime</scope>
     </dependency>
+    
+    <!-- 자동 테스트용 H2 메모리 DB -->
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>test</scope>
+</dependency>
 
     <!-- 테스트용 -->
     <dependency>
