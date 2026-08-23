@@ -1,14 +1,13 @@
 package com.dietmall.ai.config;
 
-import java.net.http.HttpClient;
-
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.web.client.RestClient;
 
 
@@ -21,12 +20,12 @@ public class AiClientConfig {
     public RestClient aiRestClient(
             AiServiceProperties properties
     ) {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(properties.connectTimeout())
-                .build();
+        SimpleClientHttpRequestFactory requestFactory =
+                new SimpleClientHttpRequestFactory();
 
-        JdkClientHttpRequestFactory requestFactory =
-                new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setConnectTimeout(
+                properties.connectTimeout()
+        );
 
         requestFactory.setReadTimeout(
                 properties.readTimeout()
@@ -35,6 +34,12 @@ public class AiClientConfig {
         RestClient.Builder aiClientBuilder = RestClient.builder()
                 .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
+                .messageConverters(converters ->
+                        converters.add(
+                                0,
+                                new JacksonJsonHttpMessageConverter()
+                        )
+                )
                 .defaultHeader(
                         HttpHeaders.CONTENT_TYPE,
                         MediaType.APPLICATION_JSON_VALUE

@@ -2,25 +2,35 @@ package com.dietmall.ai.client;
 
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+
 
 @Component
 public class AiServiceClient {
 
+    private static final int MAX_ERROR_BODY_LENGTH = 1000;
+
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
 
     public AiServiceClient(
             @Qualifier("aiRestClient")
-            RestClient restClient
+            RestClient restClient,
+            ObjectMapper objectMapper
     ) {
         this.restClient = restClient;
+        this.objectMapper = objectMapper;
     }
 
     public <R> R get(
@@ -37,12 +47,7 @@ public class AiServiceClient {
             return requireResponse(response);
 
         } catch (RestClientResponseException exception) {
-            throw new AiServiceException(
-                    AiServiceException.Reason.HTTP_ERROR,
-                    "AI service returned an HTTP error.",
-                    exception.getStatusCode().value(),
-                    exception
-            );
+            throw createHttpException(exception);
 
         } catch (ResourceAccessException exception) {
             throw createAccessException(exception);
@@ -61,23 +66,24 @@ public class AiServiceClient {
             T requestBody,
             Class<R> responseType
     ) {
+        byte[] jsonBody = serializeRequest(requestBody);
+
         try {
             R response = restClient
                     .post()
                     .uri(path)
-                    .body(requestBody)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .contentLength(jsonBody.length)
+                    .body(outputStream ->
+                            outputStream.write(jsonBody)
+                    )
                     .retrieve()
                     .body(responseType);
 
             return requireResponse(response);
 
         } catch (RestClientResponseException exception) {
-            throw new AiServiceException(
-                    AiServiceException.Reason.HTTP_ERROR,
-                    "AI service returned an HTTP error.",
-                    exception.getStatusCode().value(),
-                    exception
-            );
+            throw createHttpException(exception);
 
         } catch (ResourceAccessException exception) {
             throw createAccessException(exception);
@@ -91,7 +97,35 @@ public class AiServiceClient {
         }
     }
 
-    private <R> R requireResponse(R response) {
+    private byte[] serializeRequest(
+            Object requestBody
+    ) {
+        if (requestBody == null) {
+            throw new AiServiceException(
+                    AiServiceException.Reason.INVALID_RESPONSE,
+                    "AI service request body must not be null.",
+                    null
+            );
+        }
+
+        try {
+            String json =
+                    objectMapper.writeValueAsString(requestBody);
+
+            return json.getBytes(StandardCharsets.UTF_8);
+
+        } catch (JacksonException exception) {
+            throw new AiServiceException(
+                    AiServiceException.Reason.INVALID_RESPONSE,
+                    "AI service request could not be converted to JSON.",
+                    exception
+            );
+        }
+    }
+
+    private <R> R requireResponse(
+            R response
+    ) {
         if (response == null) {
             throw new AiServiceException(
                     AiServiceException.Reason.EMPTY_RESPONSE,
@@ -101,6 +135,42 @@ public class AiServiceClient {
         }
 
         return response;
+    }
+
+    private AiServiceException createHttpException(
+            RestClientResponseException exception
+    ) {
+        String responseBody =
+                exception.getResponseBodyAsString();
+
+        if (
+                responseBody != null
+                && responseBody.length()
+                > MAX_ERROR_BODY_LENGTH
+        ) {
+            responseBody = responseBody.substring(
+                    0,
+                    MAX_ERROR_BODY_LENGTH
+            );
+        }
+
+        String message =
+                "AI service returned HTTP "
+                + exception.getStatusCode().value();
+
+        if (
+                responseBody != null
+                && !responseBody.isBlank()
+        ) {
+            message += ": " + responseBody;
+        }
+
+        return new AiServiceException(
+                AiServiceException.Reason.HTTP_ERROR,
+                message,
+                exception.getStatusCode().value(),
+                exception
+        );
     }
 
     private AiServiceException createAccessException(
@@ -121,7 +191,9 @@ public class AiServiceClient {
         );
     }
 
-    private boolean hasTimeoutCause(Throwable throwable) {
+    private boolean hasTimeoutCause(
+            Throwable throwable
+    ) {
         Throwable current = throwable;
 
         while (current != null) {
