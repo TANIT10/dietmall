@@ -7,13 +7,19 @@ import com.dietmall.ai.client.AiServiceClient;
 import com.dietmall.ai.client.AiServiceException;
 import com.dietmall.ai.dto.InitialPlanAiRequest;
 import com.dietmall.ai.dto.InitialPlanAiResponse;
+import com.dietmall.ai.dto.PlanReviewAiRequest;
+import com.dietmall.ai.dto.PlanReviewAiResponse;
 
 @Service
 public class AiIntegrationService {
 
     private static final String HEALTH_PATH = "/health";
+
     private static final String INITIAL_PLAN_PATH =
             "/v1/plans/initial";
+
+    private static final String PLAN_REVIEW_PATH =
+            "/v1/plans/review";
 
     private final AiServiceClient aiServiceClient;
 
@@ -37,6 +43,16 @@ public class AiIntegrationService {
                 INITIAL_PLAN_PATH,
                 request,
                 InitialPlanAiResponse.class
+        );
+    }
+
+    public PlanReviewAiResponse reviewPlan(
+            PlanReviewAiRequest request
+    ) {
+        return aiServiceClient.post(
+                PLAN_REVIEW_PATH,
+                request,
+                PlanReviewAiResponse.class
         );
     }
 
