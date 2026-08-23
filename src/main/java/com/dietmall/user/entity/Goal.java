@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
+
 @Entity
 @Table(name = "goals")
 public class Goal {
@@ -38,21 +39,27 @@ public class Goal {
     )
     private BigDecimal targetWeight;
 
+    // 목표 달성 기간(주)
+    @Column(name = "goal_duration_weeks")
+    private Integer goalDurationWeeks;
+
     protected Goal() {
     }
 
     public Goal(
             User user,
-            BigDecimal targetWeight) {
-
+            BigDecimal targetWeight,
+            Integer goalDurationWeeks
+    ) {
         this.user = user;
         this.targetWeight = targetWeight;
+        this.goalDurationWeeks = goalDurationWeeks;
     }
 
     // 목표 체중 수정
     public void updateTargetWeight(
-            BigDecimal targetWeight) {
-
+            BigDecimal targetWeight
+    ) {
         this.targetWeight = targetWeight;
     }
 
@@ -66,5 +73,9 @@ public class Goal {
 
     public BigDecimal getTargetWeight() {
         return targetWeight;
+    }
+
+    public Integer getGoalDurationWeeks() {
+        return goalDurationWeeks;
     }
 }

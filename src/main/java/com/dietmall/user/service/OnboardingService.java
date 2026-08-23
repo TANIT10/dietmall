@@ -16,6 +16,7 @@ import com.dietmall.user.repository.UserProfileRepository;
 import com.dietmall.user.repository.UserRepository;
 import com.dietmall.user.repository.WeightRecordRepository;
 
+
 @Service
 public class OnboardingService {
 
@@ -28,8 +29,8 @@ public class OnboardingService {
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
             GoalRepository goalRepository,
-            WeightRecordRepository weightRecordRepository) {
-
+            WeightRecordRepository weightRecordRepository
+    ) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.goalRepository = goalRepository;
@@ -39,8 +40,8 @@ public class OnboardingService {
     @Transactional
     public void completeOnboarding(
             Long userId,
-            OnboardingRequest request) {
-
+            OnboardingRequest request
+    ) {
         // 1. 로그인한 사용자 찾기
         User user = userRepository
                 .findById(userId)
@@ -55,10 +56,15 @@ public class OnboardingService {
             throw new OnboardingAlreadyCompletedException();
         }
 
-        // 3. 사용자 생활습관 프로필 저장
+        // 3. AI 맞춤 계산에 필요한 신체·생활습관 프로필 저장
         UserProfile userProfile = new UserProfile(
                 user,
+                request.getGender(),
+                request.getAge(),
+                request.getHeightCm(),
                 request.getExerciseLevel(),
+                request.getWorkoutDaysPerWeek(),
+                request.getWorkoutMinutesPerDay(),
                 request.getDietDifficulty(),
                 request.getAlcoholFrequency(),
                 request.getMealPreference()
@@ -66,10 +72,11 @@ public class OnboardingService {
 
         userProfileRepository.save(userProfile);
 
-        // 4. 목표 체중 저장
+        // 4. 목표 체중과 목표 기간 저장
         Goal goal = new Goal(
                 user,
-                request.getTargetWeight()
+                request.getTargetWeight(),
+                request.getGoalDurationWeeks()
         );
 
         goalRepository.save(goal);
