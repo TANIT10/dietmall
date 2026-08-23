@@ -14,6 +14,11 @@ public interface AiPlanReviewRepository
             findTopByUserIdOrderByCreatedAtDesc(Long userId);
 
     Optional<AiPlanReview>
+            findTopByUserIdAndEffectiveAtIsNotNullOrderByEffectiveAtDesc(
+                    Long userId
+            );
+
+    Optional<AiPlanReview>
             findByIdAndUserId(Long reviewId, Long userId);
 
     List<AiPlanReview>

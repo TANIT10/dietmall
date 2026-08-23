@@ -1,5 +1,6 @@
 package com.dietmall.ai.entity;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import com.dietmall.user.entity.User;
@@ -23,7 +24,6 @@ public class AiInitialPlan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 플랜을 생성한 사용자
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "user_id",
@@ -31,7 +31,6 @@ public class AiInitialPlan {
     )
     private User user;
 
-    // AI API 응답 버전
     @Column(
             name = "version",
             nullable = false,
@@ -39,14 +38,12 @@ public class AiInitialPlan {
     )
     private String version;
 
-    // AI 서버에서 플랜을 생성한 시각
     @Column(
             name = "generated_at",
             nullable = false
     )
     private Instant generatedAt;
 
-    // 플랜 요약
     @Column(
             name = "summary",
             nullable = false,
@@ -54,7 +51,6 @@ public class AiInitialPlan {
     )
     private String summary;
 
-    // WEIGHT_LOSS, MAINTENANCE, WEIGHT_GAIN
     @Column(
             name = "goal_direction",
             nullable = false,
@@ -62,28 +58,33 @@ public class AiInitialPlan {
     )
     private String goalDirection;
 
-    // 하루 권장 최소 칼로리
+    // 초기 플랜 생성 당시의 체중
+    @Column(
+            name = "starting_weight",
+            nullable = false,
+            precision = 5,
+            scale = 2
+    )
+    private BigDecimal startingWeight;
+
     @Column(
             name = "minimum_calories",
             nullable = false
     )
     private Integer minimumCalories;
 
-    // 하루 권장 최대 칼로리
     @Column(
             name = "maximum_calories",
             nullable = false
     )
     private Integer maximumCalories;
 
-    // 추정값 여부
     @Column(
             name = "estimated",
             nullable = false
     )
     private boolean estimated;
 
-    // FastAPI가 반환한 전체 응답 JSON
     @Lob
     @Column(
             name = "response_json",
@@ -91,7 +92,6 @@ public class AiInitialPlan {
     )
     private String responseJson;
 
-    // Spring DB에 저장된 시각
     @Column(
             name = "created_at",
             nullable = false
@@ -107,6 +107,7 @@ public class AiInitialPlan {
             Instant generatedAt,
             String summary,
             String goalDirection,
+            BigDecimal startingWeight,
             Integer minimumCalories,
             Integer maximumCalories,
             boolean estimated,
@@ -117,6 +118,7 @@ public class AiInitialPlan {
         this.generatedAt = generatedAt;
         this.summary = summary;
         this.goalDirection = goalDirection;
+        this.startingWeight = startingWeight;
         this.minimumCalories = minimumCalories;
         this.maximumCalories = maximumCalories;
         this.estimated = estimated;
@@ -146,6 +148,10 @@ public class AiInitialPlan {
 
     public String getGoalDirection() {
         return goalDirection;
+    }
+
+    public BigDecimal getStartingWeight() {
+        return startingWeight;
     }
 
     public Integer getMinimumCalories() {

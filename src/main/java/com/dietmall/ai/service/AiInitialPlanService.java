@@ -70,6 +70,7 @@ public class AiInitialPlanService {
                 response.generatedAt(),
                 response.summary(),
                 response.goalDirection(),
+                request.currentWeightKg(),
                 response.dailyCalorieRange().minKcal(),
                 response.dailyCalorieRange().maxKcal(),
                 Boolean.TRUE.equals(

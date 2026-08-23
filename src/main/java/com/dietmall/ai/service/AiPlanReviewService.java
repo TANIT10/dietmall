@@ -1,6 +1,8 @@
 package com.dietmall.ai.service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Objects;
 
 import org.springframework.stereotype.Service;
@@ -19,18 +21,31 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class AiPlanReviewService {
 
+    private static final ZoneId KOREA_ZONE =
+            ZoneId.of("Asia/Seoul");
+
     private final UserRepository userRepository;
+
+    private final PlanReviewContextService
+            planReviewContextService;
+
     private final AiIntegrationService aiIntegrationService;
-    private final AiPlanReviewRepository aiPlanReviewRepository;
+
+    private final AiPlanReviewRepository
+            aiPlanReviewRepository;
+
     private final ObjectMapper objectMapper;
 
     public AiPlanReviewService(
             UserRepository userRepository,
+            PlanReviewContextService planReviewContextService,
             AiIntegrationService aiIntegrationService,
             AiPlanReviewRepository aiPlanReviewRepository,
             ObjectMapper objectMapper
     ) {
         this.userRepository = userRepository;
+        this.planReviewContextService =
+                planReviewContextService;
         this.aiIntegrationService = aiIntegrationService;
         this.aiPlanReviewRepository =
                 aiPlanReviewRepository;
@@ -38,7 +53,31 @@ public class AiPlanReviewService {
     }
 
     @Transactional
-    public PlanReviewResultResponse createAndSaveReview(
+    public PlanReviewResultResponse
+            createAndSaveRecentReview(
+                    Long userId
+            ) {
+        LocalDate reviewEndDate =
+                LocalDate.now(KOREA_ZONE);
+
+        LocalDate reviewStartDate =
+                reviewEndDate.minusDays(13);
+
+        PlanReviewAiRequest request =
+                planReviewContextService
+                        .buildReviewRequest(
+                                userId,
+                                reviewStartDate,
+                                reviewEndDate
+                        );
+
+        return createAndSaveReview(
+                userId,
+                request
+        );
+    }
+
+    private PlanReviewResultResponse createAndSaveReview(
             Long userId,
             PlanReviewAiRequest request
     ) {

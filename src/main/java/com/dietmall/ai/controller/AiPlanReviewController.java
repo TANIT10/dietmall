@@ -27,6 +27,23 @@ public class AiPlanReviewController {
                 aiPlanReviewService;
     }
 
+    @PostMapping
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<PlanReviewResultResponse>
+            createRecentReview(
+                    @AuthenticationPrincipal Jwt jwt
+            ) {
+        Long userId = Long.valueOf(jwt.getSubject());
+
+        PlanReviewResultResponse response =
+                aiPlanReviewService
+                        .createAndSaveRecentReview(
+                                userId
+                        );
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/latest")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<PlanReviewResultResponse>
