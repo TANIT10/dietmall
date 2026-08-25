@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +14,11 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 
 @Configuration
+@ConditionalOnProperty(
+        name = "firebase.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class FirebaseConfig {
 
     @Value("${FIREBASE_SERVICE_ACCOUNT_JSON:}")

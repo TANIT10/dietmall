@@ -20,7 +20,6 @@ public class SecurityConfig {
     @Value("${DEV_ENDPOINTS_ENABLED:true}")
     private boolean devEndpointsEnabled;
 
-
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http)
@@ -103,22 +102,21 @@ public class SecurityConfig {
         return http.build();
     }
 
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-
         // 개발용 프론트 주소
         configuration.setAllowedOrigins(
                 List.of(
                         "http://localhost:5173",
-                        "http://127.0.0.1:5173"
+                        "http://127.0.0.1:5173",
+                        "http://localhost:8081",
+                        "http://127.0.0.1:8081"
                 )
         );
-
 
         // 허용 HTTP 메서드
         configuration.setAllowedMethods(
@@ -132,7 +130,6 @@ public class SecurityConfig {
                 )
         );
 
-
         // 프론트에서 보낼 수 있는 Header
         configuration.setAllowedHeaders(
                 List.of(
@@ -142,7 +139,6 @@ public class SecurityConfig {
                 )
         );
 
-
         // 프론트에서 확인할 수 있는 Header
         configuration.setExposedHeaders(
                 List.of(
@@ -150,26 +146,21 @@ public class SecurityConfig {
                 )
         );
 
-
         configuration.setAllowCredentials(
                 true
         );
-
 
         configuration.setMaxAge(
                 3600L
         );
 
-
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
-
 
         source.registerCorsConfiguration(
                 "/**",
                 configuration
         );
-
 
         return source;
     }
