@@ -58,7 +58,6 @@ public class AiInitialPlan {
     )
     private String goalDirection;
 
-    // 초기 플랜 생성 당시의 체중
     @Column(
             name = "starting_weight",
             nullable = false,
@@ -88,7 +87,8 @@ public class AiInitialPlan {
     @Lob
     @Column(
             name = "response_json",
-            nullable = false
+            nullable = false,
+            columnDefinition = "LONGTEXT"
     )
     private String responseJson;
 
