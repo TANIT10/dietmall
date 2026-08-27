@@ -76,27 +76,37 @@ public class AiPlanReview {
     )
     private boolean adjustmentNeeded;
 
-    @Column(name = "recommended_minimum_calories")
+    @Column(
+            name = "recommended_minimum_calories"
+    )
     private Integer recommendedMinimumCalories;
 
-    @Column(name = "recommended_maximum_calories")
+    @Column(
+            name = "recommended_maximum_calories"
+    )
     private Integer recommendedMaximumCalories;
 
-    @Column(name = "recommended_workout_days_per_week")
+    @Column(
+            name = "recommended_workout_days_per_week"
+    )
     private Integer recommendedWorkoutDaysPerWeek;
 
-    @Column(name = "recommended_workout_minutes_per_day")
+    @Column(
+            name = "recommended_workout_minutes_per_day"
+    )
     private Integer recommendedWorkoutMinutesPerDay;
 
     @Lob
     @Column(
             name = "response_json",
-            nullable = false
+            nullable = false,
+            columnDefinition = "LONGTEXT"
     )
     private String responseJson;
 
-    // 사용자가 권장 플랜 수정을 실제로 적용한 시각
-    @Column(name = "effective_at")
+    @Column(
+            name = "effective_at"
+    )
     private Instant effectiveAt;
 
     @Column(
@@ -124,13 +134,16 @@ public class AiPlanReview {
             String responseJson
     ) {
         this.user = user;
-        this.reviewStartDate = reviewStartDate;
-        this.reviewEndDate = reviewEndDate;
+        this.reviewStartDate =
+                reviewStartDate;
+        this.reviewEndDate =
+                reviewEndDate;
         this.version = version;
         this.generatedAt = generatedAt;
         this.status = status;
         this.summary = summary;
-        this.adjustmentNeeded = adjustmentNeeded;
+        this.adjustmentNeeded =
+                adjustmentNeeded;
         this.recommendedMinimumCalories =
                 recommendedMinimumCalories;
         this.recommendedMaximumCalories =
@@ -143,7 +156,9 @@ public class AiPlanReview {
         this.createdAt = Instant.now();
     }
 
-    public void applyAdjustment(Instant effectiveAt) {
+    public void applyAdjustment(
+            Instant effectiveAt
+    ) {
         if (!adjustmentNeeded) {
             throw new IllegalStateException(
                     "적용할 플랜 조정 내용이 없습니다."
@@ -195,19 +210,23 @@ public class AiPlanReview {
         return adjustmentNeeded;
     }
 
-    public Integer getRecommendedMinimumCalories() {
+    public Integer
+            getRecommendedMinimumCalories() {
         return recommendedMinimumCalories;
     }
 
-    public Integer getRecommendedMaximumCalories() {
+    public Integer
+            getRecommendedMaximumCalories() {
         return recommendedMaximumCalories;
     }
 
-    public Integer getRecommendedWorkoutDaysPerWeek() {
+    public Integer
+            getRecommendedWorkoutDaysPerWeek() {
         return recommendedWorkoutDaysPerWeek;
     }
 
-    public Integer getRecommendedWorkoutMinutesPerDay() {
+    public Integer
+            getRecommendedWorkoutMinutesPerDay() {
         return recommendedWorkoutMinutesPerDay;
     }
 
