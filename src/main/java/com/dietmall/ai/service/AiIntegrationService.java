@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import com.dietmall.ai.client.AiHealthResponse;
 import com.dietmall.ai.client.AiServiceClient;
 import com.dietmall.ai.client.AiServiceException;
+import com.dietmall.ai.dto.CoachChatAiRequest;
+import com.dietmall.ai.dto.CoachChatResponse;
 import com.dietmall.ai.dto.InitialPlanAiRequest;
 import com.dietmall.ai.dto.InitialPlanAiResponse;
 import com.dietmall.ai.dto.MealFeedbackAiRequest;
@@ -23,6 +25,9 @@ public class AiIntegrationService {
 
     private static final String PLAN_REVIEW_PATH =
             "/v1/plans/review";
+
+    private static final String COACH_CHAT_PATH =
+            "/v1/coach/chat";
 
     private static final String MEAL_FEEDBACK_PATH =
             "/v1/coach/meal-feedback";
@@ -60,6 +65,16 @@ public class AiIntegrationService {
                 PLAN_REVIEW_PATH,
                 request,
                 PlanReviewAiResponse.class
+        );
+    }
+
+    public CoachChatResponse createCoachChat(
+            CoachChatAiRequest request
+    ) {
+        return aiServiceClient.post(
+                COACH_CHAT_PATH,
+                request,
+                CoachChatResponse.class
         );
     }
 
